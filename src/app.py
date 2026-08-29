@@ -5,9 +5,10 @@ A super simple FastAPI application that allows students to view and sign up
 for extracurricular activities at Mergington High School.
 """
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, Header, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import RedirectResponse
+from pydantic import BaseModel
 import os
 from pathlib import Path
 
@@ -77,6 +78,36 @@ activities = {
     }
 }
 
+# In-memory student profile database
+students = {}
+
+
+class StudentSignupRequest(BaseModel):
+    name: str
+    grade: str
+    email: str
+
+
+class StudentLoginRequest(BaseModel):
+    email: str
+
+
+def normalize_email(email: str) -> str:
+    return email.strip().lower()
+
+
+def get_authenticated_student(
+    x_student_email: str | None = Header(default=None, alias="X-Student-Email")
+):
+    if not x_student_email:
+        raise HTTPException(status_code=401, detail="Authentication required")
+
+    email = normalize_email(x_student_email)
+    if email not in students:
+        raise HTTPException(status_code=401, detail="Please sign in first")
+
+    return students[email]
+
 
 @app.get("/")
 def root():
@@ -88,15 +119,66 @@ def get_activities():
     return activities
 
 
+@app.post("/auth/signup")
+def student_signup(payload: StudentSignupRequest):
+    email = normalize_email(payload.email)
+    if "@" not in email:
+        raise HTTPException(status_code=400, detail="Invalid email address")
+
+    if email in students:
+        raise HTTPException(status_code=409, detail="Account already exists")
+
+    student = {
+        "name": payload.name.strip(),
+        "grade": payload.grade.strip(),
+        "email": email,
+    }
+
+    if not student["name"] or not student["grade"]:
+        raise HTTPException(status_code=400, detail="Name and grade are required")
+
+    students[email] = student
+    return {"message": "Student account created", "student": student}
+
+
+@app.post("/auth/login")
+def student_login(payload: StudentLoginRequest):
+    email = normalize_email(payload.email)
+    student = students.get(email)
+
+    if not student:
+        raise HTTPException(status_code=404, detail="Account not found. Please sign up first")
+
+    return {"message": "Signed in", "student": student}
+
+
+@app.get("/auth/me")
+def get_current_student(x_student_email: str | None = Header(default=None, alias="X-Student-Email")):
+    student = get_authenticated_student(x_student_email)
+    return {"student": student}
+
+
 @app.post("/activities/{activity_name}/signup")
-def signup_for_activity(activity_name: str, email: str):
+def signup_for_activity(
+    activity_name: str,
+    x_student_email: str | None = Header(default=None, alias="X-Student-Email"),
+):
     """Sign up a student for an activity"""
+    student = get_authenticated_student(x_student_email)
+
     # Validate activity exists
     if activity_name not in activities:
         raise HTTPException(status_code=404, detail="Activity not found")
 
     # Get the specific activity
     activity = activities[activity_name]
+    email = student["email"]
+
+    if len(activity["participants"]) >= activity["max_participants"]:
+        raise HTTPException(
+            status_code=400,
+            detail="Activity is full"
+        )
 
     # Validate student is not already signed up
     if email in activity["participants"]:
@@ -111,14 +193,20 @@ def signup_for_activity(activity_name: str, email: str):
 
 
 @app.delete("/activities/{activity_name}/unregister")
-def unregister_from_activity(activity_name: str, email: str):
+def unregister_from_activity(
+    activity_name: str,
+    x_student_email: str | None = Header(default=None, alias="X-Student-Email"),
+):
     """Unregister a student from an activity"""
+    student = get_authenticated_student(x_student_email)
+
     # Validate activity exists
     if activity_name not in activities:
         raise HTTPException(status_code=404, detail="Activity not found")
 
     # Get the specific activity
     activity = activities[activity_name]
+    email = student["email"]
 
     # Validate student is signed up
     if email not in activity["participants"]:
