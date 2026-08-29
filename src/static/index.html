@@ -13,6 +13,45 @@
     </header>
 
     <main>
+      <section id="auth-container">
+        <h3>Student Access</h3>
+        <p id="auth-status">You are not signed in.</p>
+
+        <div id="auth-actions">
+          <div class="auth-panel">
+            <h4>Create Account</h4>
+            <form id="signup-account-form">
+              <div class="form-group">
+                <label for="student-name">Full Name:</label>
+                <input type="text" id="student-name" required placeholder="Alex Student" />
+              </div>
+              <div class="form-group">
+                <label for="student-grade">Grade:</label>
+                <input type="text" id="student-grade" required placeholder="11" />
+              </div>
+              <div class="form-group">
+                <label for="student-email">Email:</label>
+                <input type="email" id="student-email" required placeholder="your-email@mergington.edu" />
+              </div>
+              <button type="submit">Create Account</button>
+            </form>
+          </div>
+
+          <div class="auth-panel">
+            <h4>Sign In</h4>
+            <form id="signin-form">
+              <div class="form-group">
+                <label for="signin-email">Email:</label>
+                <input type="email" id="signin-email" required placeholder="your-email@mergington.edu" />
+              </div>
+              <button type="submit">Sign In</button>
+            </form>
+          </div>
+        </div>
+
+        <button id="signout-btn" class="hidden" type="button">Sign Out</button>
+      </section>
+
       <section id="activities-container">
         <h3>Available Activities</h3>
         <div id="activities-list">
@@ -25,17 +64,13 @@
         <h3>Sign Up for an Activity</h3>
         <form id="signup-form">
           <div class="form-group">
-            <label for="email">Student Email:</label>
-            <input type="email" id="email" required placeholder="your-email@mergington.edu" />
-          </div>
-          <div class="form-group">
             <label for="activity">Select Activity:</label>
             <select id="activity" required>
               <option value="">-- Select an activity --</option>
               <!-- Activity options will be loaded here -->
             </select>
           </div>
-          <button type="submit">Sign Up</button>
+          <button id="activity-signup-btn" type="submit" disabled>Sign Up</button>
         </form>
         <div id="message" class="hidden"></div>
       </section>
